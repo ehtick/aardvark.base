@@ -522,18 +522,31 @@ module Prelude =
         /// Pins the given value and invokes the action with the native pointer.
         /// Note: Use a fixed expression with a byref if writing to the original location is required.
         let inline pin<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) (value: 'T) =
-            use ptr = fixed &value
-            action ptr
+            // See: https://github.com/dotnet/fsharp/issues/18689
+            // use ptr = fixed &value
+            // action ptr
+            let gc = GCHandle.Alloc(value, GCHandleType.Pinned)
+            try action (NativePtr.ofNativeInt <| gc.AddrOfPinnedObject())
+            finally gc.Free()
 
         /// Pins the given array and invokes the action with the native pointer.
-        let inline pinArr<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) (array: 'T[])  =
-            use ptr = fixed array
-            action ptr
+        let inline pinArr<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) (array: 'T[]) =
+            // See: https://github.com/dotnet/fsharp/issues/18689
+            // use ptr = fixed array
+            // action ptr
+            let gc = GCHandle.Alloc(array, GCHandleType.Pinned)
+            try action (NativePtr.ofNativeInt <| gc.AddrOfPinnedObject())
+            finally gc.Free()
 
         /// Pins the given array at the given index and invokes the action with the native pointer.
-        let inline pinArri<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) (index: int) (array: 'T[])  =
-            use ptr = fixed &array.[index]
-            action ptr
+        let inline pinArri<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) (index: int) (array: 'T[]) =
+            // See: https://github.com/dotnet/fsharp/issues/18689
+            // use ptr = fixed &array.[index]
+            // action ptr
+            let gc = GCHandle.Alloc(array, GCHandleType.Pinned)
+            let addr = gc.AddrOfPinnedObject() + nativeint index * nativeint sizeof<'T>
+            try action (NativePtr.ofNativeInt addr)
+            finally gc.Free()
 
         /// Allocates a temporary native pointer and invokes the action.
         let inline temp<'T, 'U when 'T : unmanaged> ([<InlineIfLambda>] action: nativeptr<'T> -> 'U) =
